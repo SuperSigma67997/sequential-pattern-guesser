@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sequence Trainer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding: 40px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .answers button {
+      display: block;
+      margin: 10px auto;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pattern Recognition Trainer</h1>
+
+  <select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <br><br>
+  <button onclick="generateQuestion()">New Sequence</button>
+
+  <h2 id="sequence"></h2>
+
+  <div class="answers" id="answers"></div>
+
+  <h3 id="result"></h3>
+
+<script>
+let correctAnswer = null;
+
+function generateQuestion() {
+  document.getElementById("result").textContent = "";
+
+  const difficulty = document.getElementById("difficulty").value;
+  const length = Math.floor(Math.random() * 4) + 2; // 2–5 numbers
+
+  let sequence = [];
+  let rule;
+
+  if (difficulty === "easy") {
+    const step = rand(1, 5);
+    const start = rand(1, 20);
+    rule = x => x + step;
+    sequence.push(start);
+  }
+
+  if (difficulty === "medium") {
+    const step1 = rand(1, 5);
+    const step2 = rand(1, 5);
+    rule = (x, i) => i % 2 === 0 ? x + step1 : x + step2;
+    sequence.push(rand(1, 20));
+  }
+
+  if (difficulty === "hard") {
+    const mult = rand(2, 4);
+    const add = rand(1, 5);
+    rule = x => x * mult + add;
+    sequence.push(rand(1, 5));
+  }
+
+  for (let i = 1; i < length; i++) {
+    const prev = sequence[i - 1];
+    sequence.push(
+      difficulty === "medium" ? rule(prev, i) : rule(prev)
+    );
+  }
+
+  correctAnswer = difficulty === "medium"
+    ? rule(sequence[sequence.length - 1], sequence.length)
+    : rule(sequence[sequence.length - 1]);
+
+  document.getElementById("sequence").textContent =
+    sequence.join(", ") + ", ?";
+
+  generateAnswers(correctAnswer);
+}
+
+function generateAnswers(correct) {
+  const answersDiv = document.getElementById("answers");
+  answersDiv.innerHTML = "";
+
+  let answers = new Set();
+  answers.add(correct);
+
+  while (answers.size < 4) {
+    answers.add(correct + rand(-10, 10));
+  }
+
+  [...answers]
+    .sort(() => Math.random() - 0.5)
+    .forEach(value => {
+      const btn = document.createElement("button");
+      btn.textContent = value;
+      btn.onclick = () => checkAnswer(value);
+      answersDiv.appendChild(btn);
+    });
+}
+
+function checkAnswer(value) {
+  document.getElementById("result").textContent =
+    value === correctAnswer ? "Correct ✅" : "Wrong ❌";
+}
+
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+</script>
+
+</body>
+</html>
