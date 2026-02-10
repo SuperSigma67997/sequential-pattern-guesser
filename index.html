@@ -2,20 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pattern Intelligence Trainer</title>
+<title>Visual & Raven Pattern Trainer</title>
+
 <style>
 body {
-  font-family: Arial, sans-serif;
   background: #0b0b0b;
   color: #eee;
+  font-family: Arial, sans-serif;
   text-align: center;
   padding: 30px;
 }
 
-button, select {
+button {
+  padding: 10px 18px;
   margin: 6px;
-  padding: 10px 20px;
   font-size: 16px;
+  cursor: pointer;
 }
 
 .hidden { display: none; }
@@ -23,63 +25,79 @@ button, select {
 .grid {
   display: flex;
   justify-content: center;
-  gap: 15px;
+  gap: 16px;
   margin: 20px 0;
 }
 
 .matrix {
   display: grid;
-  grid-template-columns: repeat(3, 64px);
+  grid-template-columns: repeat(3, 70px);
   gap: 12px;
   justify-content: center;
+  margin: 20px 0;
 }
 
 .box {
-  width: 64px;
-  height: 64px;
+  width: 70px;
+  height: 70px;
   border-radius: 10px;
-  border: 2px solid #555;
-  box-shadow: 0 0 6px rgba(255,255,255,0.15);
+  border: 3px solid #666;
   cursor: pointer;
+  box-shadow: 0 0 8px rgba(255,255,255,0.2);
 }
 
-.answers button {
-  display: block;
-  margin: 8px auto;
-  width: 220px;
+.instructions {
+  max-width: 600px;
+  margin: 10px auto 20px;
+  color: #ccc;
+  font-size: 14px;
 }
-
-hr { margin: 20px 0; }
 </style>
 </head>
+
 <body>
 
-<h1>Pattern Intelligence Trainer</h1>
+<h1>Pattern Trainer</h1>
 
-<button onclick="show('numbers')">Numbers</button>
-<button onclick="show('visual')">Visual</button>
-<button onclick="show('raven')">Raven</button>
+<button onclick="show('visual')">Visual Patterns</button>
+<button onclick="show('raven')">Raven Matrices</button>
 
 <hr>
 
-<!-- NUMBERS OMITTED FOR BREVITY — UNCHANGED -->
-
 <!-- ================= VISUAL ================= -->
 
-<div id="visual" class="hidden">
-  <h2>Visual Patterns</h2>
-  <div class="grid" id="vis-seq"></div>
-  <div class="grid" id="vis-ans"></div>
-  <h3 id="vis-res"></h3>
+<div id="visual">
+
+<h2>Visual Patterns</h2>
+
+<div class="instructions">
+You are shown a sequence of colored squares following a visual rule
+(color cycling or alternation).  
+Choose the square that correctly completes the sequence.
+</div>
+
+<div class="grid" id="vis-seq"></div>
+<div class="grid" id="vis-ans"></div>
+<h3 id="vis-res"></h3>
+
 </div>
 
 <!-- ================= RAVEN ================= -->
 
 <div id="raven" class="hidden">
-  <h2>Raven Matrix</h2>
-  <div class="matrix" id="raven-matrix"></div>
-  <div class="grid" id="raven-answers"></div>
-  <h3 id="raven-res"></h3>
+
+<h2>Raven Matrix</h2>
+
+<div class="instructions">
+Each row follows a visual rule based on brightness progression.  
+The bottom-right square is missing.  
+Choose the option that best completes the matrix.
+</div>
+
+<div class="matrix" id="raven-matrix"></div>
+<div class="grid" id="raven-answers"></div>
+<h3 id="raven-res"></h3>
+
 </div>
 
 <script>
@@ -93,18 +111,18 @@ function show(id){
 
 /* ================= VISUAL ================= */
 
-let visCorrectIndex = null;
+let visCorrect = 0;
 
 function genVisual(){
   document.getElementById("vis-res").textContent = "";
 
-  const colors = ["#ff4444", "#4488ff", "#44ff88", "#ffdd44"];
+  const colors = ["#ff4d4d", "#4d79ff", "#4dff88", "#ffd24d"];
   const ruleType = Math.floor(Math.random() * 2);
   let rule;
 
   if(ruleType === 0){
-    let start = Math.floor(Math.random()*colors.length);
-    rule = i => colors[(start+i)%colors.length];
+    let start = Math.floor(Math.random() * colors.length);
+    rule = i => colors[(start + i) % colors.length];
   } else {
     let a = colors[0], b = colors[1];
     rule = i => i % 2 === 0 ? a : b;
@@ -113,7 +131,7 @@ function genVisual(){
   const seq = document.getElementById("vis-seq");
   seq.innerHTML = "";
 
-  for(let i=0;i<4;i++){
+  for(let i = 0; i < 4; i++){
     let box = document.createElement("div");
     box.className = "box";
     box.style.background = rule(i);
@@ -127,13 +145,13 @@ function genVisual(){
 
   const ans = document.getElementById("vis-ans");
   ans.innerHTML = "";
-  visCorrectIndex = Math.floor(Math.random()*4);
+  visCorrect = Math.floor(Math.random() * 4);
 
-  for(let i=0;i<4;i++){
+  for(let i = 0; i < 4; i++){
     let box = document.createElement("div");
     box.className = "box";
     box.style.background =
-      i === visCorrectIndex ? rule(4) : randColor();
+      i === visCorrect ? rule(4) : colors[Math.floor(Math.random()*colors.length)];
     box.onclick = () => checkVisual(i);
     ans.appendChild(box);
   }
@@ -141,7 +159,7 @@ function genVisual(){
 
 function checkVisual(i){
   const res = document.getElementById("vis-res");
-  if(i === visCorrectIndex){
+  if(i === visCorrect){
     res.textContent = "Correct ✅";
     setTimeout(genVisual, 1500);
   } else {
@@ -151,7 +169,7 @@ function checkVisual(i){
 
 /* ================= RAVEN ================= */
 
-let ravenCorrectIndex = null;
+let ravenCorrect = 0;
 
 function genRaven(){
   document.getElementById("raven-res").textContent = "";
@@ -159,13 +177,14 @@ function genRaven(){
   const matrix = document.getElementById("raven-matrix");
   matrix.innerHTML = "";
 
-  let base = Math.floor(Math.random()*3)+1;
-  let rule = i => `rgba(255,255,255,${0.15*i + base*0.1})`;
+  // brightness increases left → right, top → bottom
+  let base = Math.floor(Math.random() * 3) + 1;
+  let rule = i => 0.15 + (i * 0.07) + base * 0.05;
 
-  for(let i=0;i<8;i++){
+  for(let i = 0; i < 8; i++){
     let box = document.createElement("div");
     box.className = "box";
-    box.style.background = rule(i);
+    box.style.background = `rgba(255,255,255,${rule(i)})`;
     matrix.appendChild(box);
   }
 
@@ -174,35 +193,33 @@ function genRaven(){
   q.style.background = "#222";
   matrix.appendChild(q);
 
-  const answers = document.getElementById("raven-answers");
-  answers.innerHTML = "";
-  ravenCorrectIndex = Math.floor(Math.random()*4);
+  const ans = document.getElementById("raven-answers");
+  ans.innerHTML = "";
 
-  for(let i=0;i<4;i++){
+  ravenCorrect = Math.floor(Math.random() * 4);
+
+  for(let i = 0; i < 4; i++){
     let box = document.createElement("div");
     box.className = "box";
-    box.style.background =
-      i === ravenCorrectIndex ? rule(8) : randColor();
+
+    let opacity = i === ravenCorrect
+      ? rule(8)
+      : rule(8) + (Math.random() * 0.12 - 0.06);
+
+    box.style.background = `rgba(255,255,255,${opacity})`;
     box.onclick = () => checkRaven(i);
-    answers.appendChild(box);
+    ans.appendChild(box);
   }
 }
 
 function checkRaven(i){
   const res = document.getElementById("raven-res");
-  if(i === ravenCorrectIndex){
+  if(i === ravenCorrect){
     res.textContent = "Correct ✅";
     setTimeout(genRaven, 1500);
   } else {
     res.textContent = "Wrong ❌";
   }
-}
-
-/* ================= HELPERS ================= */
-
-function randColor(){
-  let r = () => Math.floor(Math.random()*200)+30;
-  return `rgb(${r()},${r()},${r()})`;
 }
 
 /* ================= INIT ================= */
