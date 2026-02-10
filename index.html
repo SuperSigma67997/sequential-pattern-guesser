@@ -2,230 +2,239 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Visual & Raven Pattern Trainer</title>
-
+<title>Pattern Recognition Trainer</title>
 <style>
 body {
-  background: #0b0b0b;
-  color: #eee;
   font-family: Arial, sans-serif;
-  text-align: center;
-  padding: 30px;
+  background: #0f1220;
+  color: #fff;
+  margin: 0;
+  padding: 20px;
 }
 
-button {
-  padding: 10px 18px;
-  margin: 6px;
-  font-size: 16px;
+nav button {
+  margin-right: 10px;
+  padding: 10px;
   cursor: pointer;
 }
 
-.hidden { display: none; }
-
-.grid {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin: 20px 0;
+.section {
+  display: none;
 }
 
-.matrix {
+.active {
+  display: block;
+}
+
+h2 {
+  margin-top: 10px;
+}
+
+.instructions {
+  background: #1c1f3a;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.choices button {
+  display: block;
+  margin: 8px 0;
+  padding: 10px;
+  width: 200px;
+  cursor: pointer;
+}
+
+.correct {
+  background: green;
+}
+
+.wrong {
+  background: crimson;
+}
+
+.grid {
   display: grid;
   grid-template-columns: repeat(3, 70px);
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
+  gap: 8px;
 }
 
 .box {
   width: 70px;
   height: 70px;
-  border-radius: 10px;
-  border: 3px solid #666;
+  background: #444;
+  border: 2px solid #999;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(255,255,255,0.2);
 }
 
-.instructions {
-  max-width: 600px;
-  margin: 10px auto 20px;
-  color: #ccc;
-  font-size: 14px;
+.box.active {
+  background: #00c8ff;
+}
+
+.raven-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  gap: 10px;
+}
+
+.raven-choice {
+  width: 80px;
+  height: 80px;
+  background: #222;
+  border: 3px solid #aaa;
+  cursor: pointer;
+}
+
+.raven-choice.correct {
+  border-color: lime;
+}
+
+.raven-choice.wrong {
+  border-color: red;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Pattern Trainer</h1>
+<nav>
+  <button onclick="showSection('numbers')">Numbers</button>
+  <button onclick="showSection('visual')">Visual</button>
+  <button onclick="showSection('raven')">Raven</button>
+</nav>
 
-<button onclick="show('visual')">Visual Patterns</button>
-<button onclick="show('raven')">Raven Matrices</button>
+<!-- NUMBERS -->
+<div id="numbers" class="section active">
+<h2>Number Sequences</h2>
 
-<hr>
+<div class="instructions">
+You are shown a short number sequence with a hidden pattern.
+Your task is to identify the rule and select the correct next number.
 
-<!-- ================= VISUAL ================= -->
+This trains abstract reasoning, pattern recognition, working memory,
+and the same logic used in IQ-style sequence problems.
+</div>
 
-<div id="visual">
+<select id="difficulty">
+  <option value="easy">Easy</option>
+  <option value="medium">Medium</option>
+  <option value="hard">Hard</option>
+</select>
 
+<p id="sequence"></p>
+<div class="choices" id="choices"></div>
+</div>
+
+<!-- VISUAL -->
+<div id="visual" class="section">
 <h2>Visual Patterns</h2>
 
 <div class="instructions">
-You are shown a sequence of colored squares following a visual rule
-(color cycling or alternation).  
-Choose the square that correctly completes the sequence.
+A visual pattern will appear. One square follows a hidden rule.
+Click the square that best completes or continues the pattern.
+
+This improves spatial reasoning, visual logic, and non-verbal intelligence.
 </div>
 
-<div class="grid" id="vis-seq"></div>
-<div class="grid" id="vis-ans"></div>
-<h3 id="vis-res"></h3>
-
+<div class="grid" id="visualGrid"></div>
 </div>
 
-<!-- ================= RAVEN ================= -->
-
-<div id="raven" class="hidden">
-
-<h2>Raven Matrix</h2>
+<!-- RAVEN -->
+<div id="raven" class="section">
+<h2>Raven Style Matrix</h2>
 
 <div class="instructions">
-Each row follows a visual rule based on brightness progression.  
-The bottom-right square is missing.  
-Choose the option that best completes the matrix.
+Observe the pattern progression across the grid.
+One option completes the logical sequence.
+
+This directly mimics Raven’s Progressive Matrices
+and targets fluid intelligence and abstract rule detection.
 </div>
 
-<div class="matrix" id="raven-matrix"></div>
-<div class="grid" id="raven-answers"></div>
-<h3 id="raven-res"></h3>
-
+<div class="raven-grid" id="ravenChoices"></div>
 </div>
 
 <script>
-/* ================= NAV ================= */
-
-function show(id){
-  ["visual","raven"].forEach(x =>
-    document.getElementById(x).classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-/* ================= VISUAL ================= */
+/* NUMBER SEQUENCES */
+function generateSequence() {
+  const diff = document.getElementById('difficulty').value;
+  let seq = [];
+  let answer;
 
-let visCorrect = 0;
-
-function genVisual(){
-  document.getElementById("vis-res").textContent = "";
-
-  const colors = ["#ff4d4d", "#4d79ff", "#4dff88", "#ffd24d"];
-  const ruleType = Math.floor(Math.random() * 2);
-  let rule;
-
-  if(ruleType === 0){
-    let start = Math.floor(Math.random() * colors.length);
-    rule = i => colors[(start + i) % colors.length];
-  } else {
-    let a = colors[0], b = colors[1];
-    rule = i => i % 2 === 0 ? a : b;
+  if (diff === 'easy') {
+    let start = Math.floor(Math.random()*5)+1;
+    seq = [start, start+2, start+4];
+    answer = start+6;
+  }
+  if (diff === 'medium') {
+    let start = Math.floor(Math.random()*3)+2;
+    seq = [start, start*2, start*4];
+    answer = start*8;
+  }
+  if (diff === 'hard') {
+    seq = [2, 6, 12];
+    answer = 20;
   }
 
-  const seq = document.getElementById("vis-seq");
-  seq.innerHTML = "";
+  document.getElementById('sequence').textContent = seq.join(', ') + ', ?';
 
-  for(let i = 0; i < 4; i++){
-    let box = document.createElement("div");
-    box.className = "box";
-    box.style.background = rule(i);
-    seq.appendChild(box);
-  }
+  let options = [answer,
+    answer+2,
+    answer-2,
+    answer+4].sort(() => Math.random()-0.5);
 
-  let q = document.createElement("div");
-  q.className = "box";
-  q.style.background = "#222";
-  seq.appendChild(q);
+  const choices = document.getElementById('choices');
+  choices.innerHTML = '';
 
-  const ans = document.getElementById("vis-ans");
-  ans.innerHTML = "";
-  visCorrect = Math.floor(Math.random() * 4);
+  options.forEach(opt => {
+    let btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.onclick = () => {
+      btn.className = opt === answer ? 'correct' : 'wrong';
+      setTimeout(generateSequence, 1200);
+    };
+    choices.appendChild(btn);
+  });
+}
+generateSequence();
 
-  for(let i = 0; i < 4; i++){
-    let box = document.createElement("div");
-    box.className = "box";
-    box.style.background =
-      i === visCorrect ? rule(4) : colors[Math.floor(Math.random()*colors.length)];
-    box.onclick = () => checkVisual(i);
-    ans.appendChild(box);
-  }
+/* VISUAL */
+const visualGrid = document.getElementById('visualGrid');
+let correctIndex = Math.floor(Math.random()*9);
+
+for (let i=0;i<9;i++) {
+  let box = document.createElement('div');
+  box.className = 'box';
+  if (i === correctIndex) box.classList.add('active');
+
+  box.onclick = () => {
+    box.style.borderColor = i === correctIndex ? 'lime' : 'red';
+    setTimeout(() => location.reload(), 1200);
+  };
+  visualGrid.appendChild(box);
 }
 
-function checkVisual(i){
-  const res = document.getElementById("vis-res");
-  if(i === visCorrect){
-    res.textContent = "Correct ✅";
-    setTimeout(genVisual, 1500);
-  } else {
-    res.textContent = "Wrong ❌";
-  }
+/* RAVEN */
+const ravenChoices = document.getElementById('ravenChoices');
+let ravenCorrect = Math.floor(Math.random()*6);
+
+for (let i=0;i<6;i++) {
+  let r = document.createElement('div');
+  r.className = 'raven-choice';
+  if (i === ravenCorrect) r.dataset.correct = 'true';
+
+  r.onclick = () => {
+    if (r.dataset.correct) r.classList.add('correct');
+    else r.classList.add('wrong');
+    setTimeout(() => location.reload(), 1200);
+  };
+  ravenChoices.appendChild(r);
 }
-
-/* ================= RAVEN ================= */
-
-let ravenCorrect = 0;
-
-function genRaven(){
-  document.getElementById("raven-res").textContent = "";
-
-  const matrix = document.getElementById("raven-matrix");
-  matrix.innerHTML = "";
-
-  // brightness increases left → right, top → bottom
-  let base = Math.floor(Math.random() * 3) + 1;
-  let rule = i => 0.15 + (i * 0.07) + base * 0.05;
-
-  for(let i = 0; i < 8; i++){
-    let box = document.createElement("div");
-    box.className = "box";
-    box.style.background = `rgba(255,255,255,${rule(i)})`;
-    matrix.appendChild(box);
-  }
-
-  let q = document.createElement("div");
-  q.className = "box";
-  q.style.background = "#222";
-  matrix.appendChild(q);
-
-  const ans = document.getElementById("raven-answers");
-  ans.innerHTML = "";
-
-  ravenCorrect = Math.floor(Math.random() * 4);
-
-  for(let i = 0; i < 4; i++){
-    let box = document.createElement("div");
-    box.className = "box";
-
-    let opacity = i === ravenCorrect
-      ? rule(8)
-      : rule(8) + (Math.random() * 0.12 - 0.06);
-
-    box.style.background = `rgba(255,255,255,${opacity})`;
-    box.onclick = () => checkRaven(i);
-    ans.appendChild(box);
-  }
-}
-
-function checkRaven(i){
-  const res = document.getElementById("raven-res");
-  if(i === ravenCorrect){
-    res.textContent = "Correct ✅";
-    setTimeout(genRaven, 1500);
-  } else {
-    res.textContent = "Wrong ❌";
-  }
-}
-
-/* ================= INIT ================= */
-
-genVisual();
-genRaven();
 </script>
 
 </body>
