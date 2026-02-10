@@ -1,94 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Sequence Trainer</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      text-align: center;
-      padding: 40px;
-    }
-    button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .answers button {
-      display: block;
-      margin: 10px auto;
-      width: 200px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Sequence Trainer</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    text-align: center;
+    padding: 40px;
+  }
+  button, select {
+    margin: 6px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .answers button {
+    display: block;
+    margin: 8px auto;
+    width: 220px;
+  }
+</style>
 </head>
 <body>
 
-  <h1>Pattern Recognition Trainer</h1>
+<h1>Pattern Recognition Trainer</h1>
 
-  <select id="difficulty">
-    <option value="easy">Easy</option>
-    <option value="medium">Medium</option>
-    <option value="hard">Hard</option>
-  </select>
+<select id="difficulty">
+  <option value="easy">Easy</option>
+  <option value="medium">Medium</option>
+  <option value="hard">Hard</option>
+</select>
 
-  <br><br>
-  <button onclick="generateQuestion()">New Sequence</button>
+<select id="confidence">
+  <option value="">Confidence?</option>
+  <option>Low</option>
+  <option>Medium</option>
+  <option>High</option>
+</select>
 
-  <h2 id="sequence"></h2>
+<br><br>
+<button onclick="generateQuestion()">New Sequence</button>
 
-  <div class="answers" id="answers"></div>
-
-  <h3 id="result"></h3>
+<h2 id="sequence"></h2>
+<div class="answers" id="answers"></div>
+<h3 id="result"></h3>
 
 <script>
 let correctAnswer = null;
+let lastRule = null;
+let retryMode = false;
 
-function generateQuestion() {
+function generateQuestion(ruleOverride = null) {
   document.getElementById("result").textContent = "";
+  document.getElementById("confidence").value = "";
 
   const difficulty = document.getElementById("difficulty").value;
-  const length = Math.floor(Math.random() * 4) + 2; // 2–5 numbers
+  const useBinary = Math.random() < (difficulty === "hard" ? 0.5 : 0.2);
+  const length = Math.floor(Math.random() * 4) + 2;
 
   let sequence = [];
-  let rule;
+  let rule = ruleOverride;
 
-  if (difficulty === "easy") {
-    const step = rand(1, 5);
-    const start = rand(1, 20);
-    rule = x => x + step;
-    sequence.push(start);
+  if (!rule) {
+    if (useBinary) {
+      const bit = Math.floor(Math.random() * 4);
+      rule = x => x ^ (1 << bit);
+      sequence.push(Math.floor(Math.random() * 16));
+    } else if (difficulty === "easy") {
+      const step = rand(1, 5);
+      rule = x => x + step;
+      sequence.push(rand(1, 20));
+    } else if (difficulty === "medium") {
+      const a = rand(1, 5), b = rand(1, 5);
+      rule = (x, i) => i % 2 === 0 ? x + a : x + b;
+      sequence.push(rand(1, 20));
+    } else {
+      const m = rand(2, 4), a = rand(1, 5);
+      rule = x => x * m + a;
+      sequence.push(rand(1, 5));
+    }
   }
 
-  if (difficulty === "medium") {
-    const step1 = rand(1, 5);
-    const step2 = rand(1, 5);
-    rule = (x, i) => i % 2 === 0 ? x + step1 : x + step2;
-    sequence.push(rand(1, 20));
-  }
-
-  if (difficulty === "hard") {
-    const mult = rand(2, 4);
-    const add = rand(1, 5);
-    rule = x => x * mult + add;
-    sequence.push(rand(1, 5));
-  }
+  lastRule = rule;
 
   for (let i = 1; i < length; i++) {
     const prev = sequence[i - 1];
     sequence.push(
-      difficulty === "medium" ? rule(prev, i) : rule(prev)
+      rule.length === 2 ? rule(prev, i) : rule(prev)
     );
   }
 
-  correctAnswer = difficulty === "medium"
-    ? rule(sequence[sequence.length - 1], sequence.length)
-    : rule(sequence[sequence.length - 1]);
+  correctAnswer =
+    rule.length === 2
+      ? rule(sequence.at(-1), sequence.length)
+      : rule(sequence.at(-1));
 
   document.getElementById("sequence").textContent =
-    sequence.join(", ") + ", ?";
+    sequence.map(n => useBinary ? n.toString(2).padStart(4, "0") : n).join(", ") + ", ?";
 
   generateAnswers(correctAnswer);
 }
@@ -97,26 +108,33 @@ function generateAnswers(correct) {
   const answersDiv = document.getElementById("answers");
   answersDiv.innerHTML = "";
 
-  let answers = new Set();
-  answers.add(correct);
+  let answers = new Set([correct]);
+  while (answers.size < 4) answers.add(correct + rand(-10, 10));
 
-  while (answers.size < 4) {
-    answers.add(correct + rand(-10, 10));
-  }
-
-  [...answers]
-    .sort(() => Math.random() - 0.5)
-    .forEach(value => {
-      const btn = document.createElement("button");
-      btn.textContent = value;
-      btn.onclick = () => checkAnswer(value);
-      answersDiv.appendChild(btn);
-    });
+  [...answers].sort(() => Math.random() - 0.5).forEach(v => {
+    const btn = document.createElement("button");
+    btn.textContent = v;
+    btn.onclick = () => checkAnswer(v);
+    answersDiv.appendChild(btn);
+  });
 }
 
 function checkAnswer(value) {
-  document.getElementById("result").textContent =
-    value === correctAnswer ? "Correct ✅" : "Wrong ❌";
+  const confidence = document.getElementById("confidence").value;
+  if (!confidence) {
+    alert("Select confidence first.");
+    return;
+  }
+
+  if (value === correctAnswer) {
+    document.getElementById("result").textContent = "Correct ✅";
+    retryMode = false;
+    setTimeout(() => generateQuestion(), 2000);
+  } else {
+    document.getElementById("result").textContent = "Wrong ❌ — retry similar pattern";
+    retryMode = true;
+    setTimeout(() => generateQuestion(lastRule), 1500);
+  }
 }
 
 function rand(min, max) {
