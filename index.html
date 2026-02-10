@@ -57,6 +57,11 @@ h2 {
   color: #fff;
 }
 
+#sequence {
+  font-size: 24px;
+  margin: 15px 0;
+}
+
 .raven-grid {
   display: grid;
   grid-template-columns: repeat(3, 70px);
@@ -95,17 +100,42 @@ h2 {
 
 </style>
 </head>
+
 <body>
 
 <nav>
+  <button onclick="showSection('numbers')">Number Sequences</button>
   <button onclick="showSection('raven')">Raven Matrices</button>
 </nav>
 
-<div id="raven" class="section active">
+<!-- ================== NUMBER SEQUENCES ================== -->
+<div id="numbers" class="section active">
+<h2>Number Sequences</h2>
+
+<div class="instructions">
+You are shown a short number sequence with a hidden pattern.
+Your task is to identify the rule and select the correct next number.
+
+This trains abstract reasoning, pattern recognition, working memory,
+and tactical/logical intelligence.
+</div>
+
+<select id="difficulty">
+  <option value="easy">Easy</option>
+  <option value="medium">Medium</option>
+  <option value="hard">Hard</option>
+</select>
+
+<p id="sequence"></p>
+<div class="choices" id="choices"></div>
+</div>
+
+<!-- ================== RAVEN MATRICES ================== -->
+<div id="raven" class="section">
 <h2>Raven Progressive Matrix</h2>
 <div class="instructions">
 Observe the 3x3 grid. The bottom-right square is missing.  
-Identify the rule (rotation, shape, or count) and select the correct option below.  
+Identify the rule (shape progression across rows/columns) and select the correct option below.  
 This trains pattern recognition, tactical reasoning, and adaptive intelligence.
 </div>
 
@@ -115,15 +145,57 @@ This trains pattern recognition, tactical reasoning, and adaptive intelligence.
 </div>
 
 <script>
+/* ================= NAVIGATION ================= */
 function showSection(id){
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-/* ================== Raven Logic ================== */
+/* ================= NUMBER SEQUENCES ================= */
+function generateSequence() {
+  const diff = document.getElementById('difficulty').value;
+  let seq = [];
+  let answer;
 
-const shapes = ['circle', 'triangle', 'square'];
+  if (diff === 'easy') {
+    let start = Math.floor(Math.random()*5)+1;
+    seq = [start, start+2, start+4];
+    answer = start+6;
+  }
+  if (diff === 'medium') {
+    let start = Math.floor(Math.random()*3)+2;
+    seq = [start, start*2, start*4];
+    answer = start*8;
+  }
+  if (diff === 'hard') {
+    seq = [2, 6, 12];
+    answer = 20;
+  }
 
+  document.getElementById('sequence').textContent = seq.join(', ') + ', ?';
+
+  let options = [answer,
+    answer+2,
+    answer-2,
+    answer+4].sort(() => Math.random()-0.5);
+
+  const choices = document.getElementById('choices');
+  choices.innerHTML = '';
+
+  options.forEach(opt => {
+    let btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.onclick = () => {
+      btn.className = opt === answer ? 'correct' : 'wrong';
+      setTimeout(generateSequence, 1200);
+    };
+    choices.appendChild(btn);
+  });
+}
+generateSequence();
+
+/* ================= RAVEN MATRICES ================= */
+const shapes = ['circle','triangle','square'];
 let ravenMatrix = [];
 let ravenCorrect = 0;
 
@@ -133,21 +205,19 @@ function generateRaven() {
   const grid = document.getElementById('ravenGrid');
   grid.innerHTML = '';
 
-  // Pick a random rule type: rotation, shape, or count
-  const ruleType = Math.floor(Math.random() * 3);
+  // Pick a rule: shape progression
+  const ruleType = 0;
 
-  // Create symbols for top two rows
-  for (let r=0; r<3; r++){
+  // Build top 2 rows + first 2 of bottom row
+  for (let r=0;r<3;r++){
     ravenMatrix[r] = [];
-    for (let c=0; c<3; c++){
-      if (r === 2 && c === 2){ ravenMatrix[r][c] = null; continue; } // bottom-right empty
-      if (ruleType === 0) ravenMatrix[r][c] = shapes[(c+r)%3]; // shape progression
-      if (ruleType === 1) ravenMatrix[r][c] = shapes[Math.floor(Math.random()*3)]; // random with rotation
-      if (ruleType === 2) ravenMatrix[r][c] = shapes[r%3]; // row-wise pattern
+    for (let c=0;c<3;c++){
+      if (r===2 && c===2){ ravenMatrix[r][c]=null; continue; }
+      ravenMatrix[r][c] = shapes[(r+c)%3];
     }
   }
 
-  // Render the grid
+  // Render grid
   for (let r=0;r<3;r++){
     for (let c=0;c<3;c++){
       let cell = document.createElement('div');
@@ -161,31 +231,28 @@ function generateRaven() {
     }
   }
 
-  // Determine correct option for bottom-right
-  // We'll keep it simple: shape that fits pattern
+  // Correct answer
   ravenCorrect = Math.floor(Math.random()*4);
+  const correctShape = shapes[(2+2)%3];
   const optionsDiv = document.getElementById('ravenChoices');
   optionsDiv.innerHTML = '';
-  const correctShape = shapes[(2+2)%3]; // simple for now
 
   for (let i=0;i<4;i++){
     let btn = document.createElement('button');
-    let shape = (i === ravenCorrect) ? correctShape : shapes[Math.floor(Math.random()*3)];
-    btn.textContent = shape;
+    btn.textContent = i===ravenCorrect ? correctShape : shapes[Math.floor(Math.random()*3)];
     btn.onclick = () => {
       if (i===ravenCorrect) {
         btn.classList.add('correct');
-        document.getElementById('ravenRes').textContent = 'Correct ✅';
+        document.getElementById('ravenRes').textContent='Correct ✅';
       } else {
         btn.classList.add('wrong');
-        document.getElementById('ravenRes').textContent = 'Wrong ❌';
+        document.getElementById('ravenRes').textContent='Wrong ❌';
       }
-      setTimeout(generateRaven, 1500);
+      setTimeout(generateRaven,1500);
     };
     optionsDiv.appendChild(btn);
   }
 }
-
 generateRaven();
 
 </script>
