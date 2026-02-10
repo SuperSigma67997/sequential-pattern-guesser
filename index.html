@@ -97,6 +97,7 @@ h2 {
   background: none;
 }
 .symbol.square { background: #fff; }
+
 </style>
 </head>
 
@@ -107,9 +108,10 @@ h2 {
   <button onclick="showSection('raven')">Raven Matrices</button>
 </nav>
 
-<!-- NUMBER SEQUENCES -->
+<!-- ================== NUMBER SEQUENCES ================== -->
 <div id="numbers" class="section active">
 <h2>Number Sequences</h2>
+
 <div class="instructions">
 You are shown a short number sequence with a hidden pattern.
 Select the correct next number. Trains logic, pattern recognition, and working memory.
@@ -125,11 +127,11 @@ Select the correct next number. Trains logic, pattern recognition, and working m
 <div class="choices" id="choices"></div>
 </div>
 
-<!-- RAVEN MATRICES -->
+<!-- ================== RAVEN MATRICES ================== -->
 <div id="raven" class="section">
 <h2>Raven Progressive Matrix</h2>
 <div class="instructions">
-3x3 grid. Bottom-right missing. Select the option that completes the pattern.
+3x3 grid. Bottom-right square is missing. Select the option that completes the pattern.
 Trains pattern recognition, tactical reasoning, and adaptive intelligence.
 </div>
 
@@ -139,19 +141,25 @@ Trains pattern recognition, tactical reasoning, and adaptive intelligence.
 </div>
 
 <script>
-/* ======== NAVIGATION ======== */
+/* ================= NAVIGATION ================= */
 function showSection(id){
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-/* ======== NUMBER SEQUENCES ======== */
+/* ================= NUMBER SEQUENCES ================= */
 function generateSequence() {
   const diff = document.getElementById('difficulty').value;
   let seq=[], answer;
-  if(diff==='easy'){ let start=Math.floor(Math.random()*5)+1; seq=[start,start+2,start+4]; answer=start+6; }
-  if(diff==='medium'){ let start=Math.floor(Math.random()*3)+2; seq=[start,start*2,start*4]; answer=start*8; }
-  if(diff==='hard'){ seq=[2,6,12]; answer=20; }
+  if(diff==='easy'){ 
+    let start=Math.floor(Math.random()*5)+1; seq=[start,start+2,start+4]; answer=start+6; 
+  }
+  if(diff==='medium'){ 
+    let start=Math.floor(Math.random()*3)+2; seq=[start,start*2,start*4]; answer=start*8; 
+  }
+  if(diff==='hard'){ 
+    seq=[2,6,12]; answer=20; 
+  }
 
   document.getElementById('sequence').textContent = seq.join(', ')+', ?';
 
@@ -161,13 +169,16 @@ function generateSequence() {
   options.forEach(opt=>{
     let btn=document.createElement('button');
     btn.textContent=opt;
-    btn.onclick=()=>{ btn.className = opt===answer?'correct':'wrong'; setTimeout(generateSequence,1200); };
+    btn.onclick=()=>{
+      btn.className = opt===answer?'correct':'wrong';
+      setTimeout(generateSequence,1200);
+    };
     choices.appendChild(btn);
   });
 }
 generateSequence();
 
-/* ======== RAVEN MATRICES ======== */
+/* ================= RAVEN MATRICES ================= */
 const shapes=['circle','triangle','square'];
 let ravenMatrix=[], ravenCorrect=0;
 
@@ -178,11 +189,11 @@ function generateRaven(){
   const grid=document.getElementById('ravenGrid');
   grid.innerHTML='';
 
-  // Build 3x3 shape progression
+  // Build 3x3 shape progression (row+col progression)
   for(let r=0;r<3;r++){
     ravenMatrix[r]=[];
     for(let c=0;c<3;c++){
-      if(r===2 && c===2){ ravenMatrix[r][c]=null; continue; }
+      if(r===2 && c===2){ ravenMatrix[r][c]=null; continue; } // bottom-right missing
       ravenMatrix[r][c]=shapes[(r+c)%3];
     }
   }
@@ -205,17 +216,15 @@ function generateRaven(){
   const correctShape = shapes[(2+2)%3];
   ravenCorrect=Math.floor(Math.random()*4);
 
-  // Generate 3 unique wrong options
+  // Create unique wrong options
   let wrongOptions = shapes.filter(s=>s!==correctShape);
   wrongOptions.sort(()=>Math.random()-0.5);
-  wrongOptions = wrongOptions.slice(0,3);
+  let options = wrongOptions.slice(0,3); // 3 wrong
+  options.splice(ravenCorrect,0,correctShape); // insert correct at random index
 
-  // Shuffle correct + wrong options
-  let options = wrongOptions;
-  options.splice(ravenCorrect,0,correctShape);
-
-  const optionsDiv = document.getElementById('ravenChoices');
+  const optionsDiv=document.getElementById('ravenChoices');
   optionsDiv.innerHTML='';
+
   options.forEach((shape,i)=>{
     let btn=document.createElement('button');
     btn.textContent=shape;
