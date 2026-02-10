@@ -2,25 +2,46 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sequence Trainer</title>
+<title>Pattern Recognition Trainer</title>
 <style>
   body {
     font-family: Arial, sans-serif;
     background: #111;
     color: #eee;
     text-align: center;
-    padding: 40px;
+    padding: 30px;
   }
+
   button, select {
     margin: 6px;
     padding: 10px 20px;
     font-size: 16px;
     cursor: pointer;
   }
+
+  .hidden { display: none; }
+
   .answers button {
     display: block;
     margin: 8px auto;
     width: 220px;
+  }
+
+  .grid {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 25px 0;
+  }
+
+  .box {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+  }
+
+  .tabs button {
+    margin: 0 10px;
   }
 </style>
 </head>
@@ -28,32 +49,64 @@
 
 <h1>Pattern Recognition Trainer</h1>
 
-<select id="difficulty">
-  <option value="easy">Easy</option>
-  <option value="medium">Medium</option>
-  <option value="hard">Hard</option>
-</select>
+<div class="tabs">
+  <button onclick="showMode('numbers')">Number / Binary</button>
+  <button onclick="showMode('visual')">Visual Patterns</button>
+</div>
 
-<select id="confidence">
-  <option value="">Confidence?</option>
-  <option>Low</option>
-  <option>Medium</option>
-  <option>High</option>
-</select>
+<hr>
 
-<br><br>
-<button onclick="generateQuestion()">New Sequence</button>
+<!-- ================= NUMBERS MODE ================= -->
 
-<h2 id="sequence"></h2>
-<div class="answers" id="answers"></div>
-<h3 id="result"></h3>
+<div id="numbers">
+
+  <select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <select id="confidence">
+    <option value="">Confidence?</option>
+    <option>Low</option>
+    <option>Medium</option>
+    <option>High</option>
+  </select>
+
+  <br><br>
+  <button onclick="generateNumberQuestion()">New Sequence</button>
+
+  <h2 id="sequence"></h2>
+  <div class="answers" id="answers"></div>
+  <h3 id="result"></h3>
+
+</div>
+
+<!-- ================= VISUAL MODE ================= -->
+
+<div id="visual" class="hidden">
+
+  <div class="grid" id="visual-sequence"></div>
+  <div class="grid" id="visual-answers"></div>
+  <h3 id="visual-result"></h3>
+
+</div>
 
 <script>
+/* ================= TAB CONTROL ================= */
+
+function showMode(mode) {
+  document.getElementById("numbers").classList.add("hidden");
+  document.getElementById("visual").classList.add("hidden");
+  document.getElementById(mode).classList.remove("hidden");
+}
+
+/* ================= NUMBER LOGIC ================= */
+
 let correctAnswer = null;
 let lastRule = null;
-let retryMode = false;
 
-function generateQuestion(ruleOverride = null) {
+function generateNumberQuestion(ruleOverride = null) {
   document.getElementById("result").textContent = "";
   document.getElementById("confidence").value = "";
 
@@ -88,9 +141,7 @@ function generateQuestion(ruleOverride = null) {
 
   for (let i = 1; i < length; i++) {
     const prev = sequence[i - 1];
-    sequence.push(
-      rule.length === 2 ? rule(prev, i) : rule(prev)
-    );
+    sequence.push(rule.length === 2 ? rule(prev, i) : rule(prev));
   }
 
   correctAnswer =
@@ -101,10 +152,10 @@ function generateQuestion(ruleOverride = null) {
   document.getElementById("sequence").textContent =
     sequence.map(n => useBinary ? n.toString(2).padStart(4, "0") : n).join(", ") + ", ?";
 
-  generateAnswers(correctAnswer);
+  generateNumberAnswers(correctAnswer);
 }
 
-function generateAnswers(correct) {
+function generateNumberAnswers(correct) {
   const answersDiv = document.getElementById("answers");
   answersDiv.innerHTML = "";
 
@@ -114,32 +165,107 @@ function generateAnswers(correct) {
   [...answers].sort(() => Math.random() - 0.5).forEach(v => {
     const btn = document.createElement("button");
     btn.textContent = v;
-    btn.onclick = () => checkAnswer(v);
+    btn.onclick = () => checkNumberAnswer(v);
     answersDiv.appendChild(btn);
   });
 }
 
-function checkAnswer(value) {
+function checkNumberAnswer(value) {
   const confidence = document.getElementById("confidence").value;
-  if (!confidence) {
-    alert("Select confidence first.");
-    return;
-  }
+  if (!confidence) return alert("Select confidence first.");
 
   if (value === correctAnswer) {
     document.getElementById("result").textContent = "Correct ✅";
-    retryMode = false;
-    setTimeout(() => generateQuestion(), 2000);
+    setTimeout(() => generateNumberQuestion(), 2000);
   } else {
     document.getElementById("result").textContent = "Wrong ❌ — retry similar pattern";
-    retryMode = true;
-    setTimeout(() => generateQuestion(lastRule), 1500);
+    setTimeout(() => generateNumberQuestion(lastRule), 1500);
   }
 }
+
+/* ================= VISUAL LOGIC ================= */
+
+let visualCorrect = null;
+
+function generateVisual() {
+  document.getElementById("visual-result").textContent = "";
+
+  const colors = ["red", "blue", "green", "yellow"];
+  const ruleType = Math.floor(Math.random() * 3);
+  let rule;
+
+  if (ruleType === 0) {
+    const start = Math.floor(Math.random() * colors.length);
+    rule = i => colors[(start + i) % colors.length];
+  }
+
+  if (ruleType === 1) {
+    const a = colors[rand(0, 3)];
+    let b;
+    do { b = colors[rand(0, 3)]; } while (b === a);
+    rule = i => i % 2 === 0 ? a : b;
+  }
+
+  if (ruleType === 2) {
+    rule = i => `rgba(255,255,255,${0.2 + i * 0.2})`;
+  }
+
+  const seqDiv = document.getElementById("visual-sequence");
+  seqDiv.innerHTML = "";
+
+  for (let i = 0; i < 4; i++) {
+    const box = document.createElement("div");
+    box.className = "box";
+    box.style.background = rule(i);
+    seqDiv.appendChild(box);
+  }
+
+  const q = document.createElement("div");
+  q.className = "box";
+  q.style.background = "#333";
+  seqDiv.appendChild(q);
+
+  generateVisualAnswers(rule, 4);
+}
+
+function generateVisualAnswers(rule, index) {
+  const answersDiv = document.getElementById("visual-answers");
+  answersDiv.innerHTML = "";
+  visualCorrect = rand(0, 3);
+
+  for (let i = 0; i < 4; i++) {
+    const box = document.createElement("div");
+    box.className = "box";
+    box.style.background = i === visualCorrect ? rule(index) : randomColor();
+    box.onclick = () => checkVisualAnswer(i);
+    answersDiv.appendChild(box);
+  }
+}
+
+function checkVisualAnswer(i) {
+  if (i === visualCorrect) {
+    document.getElementById("visual-result").textContent = "Correct ✅";
+    setTimeout(generateVisual, 2000);
+  } else {
+    document.getElementById("visual-result").textContent = "Wrong ❌";
+  }
+}
+
+/* ================= HELPERS ================= */
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+function randomColor() {
+  const r = () => Math.floor(Math.random() * 255);
+  return `rgb(${r()},${r()},${r()})`;
+}
+
+/* ================= INIT ================= */
+
+generateNumberQuestion();
+generateVisual();
 </script>
 
 </body>
