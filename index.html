@@ -2,270 +2,308 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pattern Recognition Trainer</title>
+<title>Pattern Intelligence Trainer</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: #eee;
-    text-align: center;
-    padding: 30px;
-  }
-
-  button, select {
-    margin: 6px;
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-
-  .hidden { display: none; }
-
-  .answers button {
-    display: block;
-    margin: 8px auto;
-    width: 220px;
-  }
-
-  .grid {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin: 25px 0;
-  }
-
-  .box {
-    width: 60px;
-    height: 60px;
-    border-radius: 8px;
-  }
-
-  .tabs button {
-    margin: 0 10px;
-  }
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #eee;
+  text-align: center;
+  padding: 30px;
+}
+button, select {
+  margin: 6px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+.hidden { display: none; }
+.grid {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+.matrix {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  gap: 10px;
+  justify-content: center;
+}
+.box {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+}
+.answers button {
+  display: block;
+  margin: 8px auto;
+  width: 220px;
+}
+hr { margin: 20px 0; }
 </style>
 </head>
 <body>
 
-<h1>Pattern Recognition Trainer</h1>
+<h1>Pattern Intelligence Trainer</h1>
 
-<div class="tabs">
-  <button onclick="showMode('numbers')">Number / Binary</button>
-  <button onclick="showMode('visual')">Visual Patterns</button>
-</div>
+<button onclick="show('numbers')">Numbers</button>
+<button onclick="show('visual')">Visual</button>
+<button onclick="show('raven')">Raven</button>
+<button onclick="show('stats')">Stats</button>
 
 <hr>
 
-<!-- ================= NUMBERS MODE ================= -->
+<!-- ================= NUMBERS ================= -->
 
 <div id="numbers">
+<select id="difficulty">
+  <option value="easy">Easy</option>
+  <option value="medium">Medium</option>
+  <option value="hard">Hard</option>
+</select>
 
-  <select id="difficulty">
-    <option value="easy">Easy</option>
-    <option value="medium">Medium</option>
-    <option value="hard">Hard</option>
-  </select>
+<select id="confidence">
+  <option value="">Confidence?</option>
+  <option>Low</option>
+  <option>Medium</option>
+  <option>High</option>
+</select>
 
-  <select id="confidence">
-    <option value="">Confidence?</option>
-    <option>Low</option>
-    <option>Medium</option>
-    <option>High</option>
-  </select>
-
-  <br><br>
-  <button onclick="generateNumberQuestion()">New Sequence</button>
-
-  <h2 id="sequence"></h2>
-  <div class="answers" id="answers"></div>
-  <h3 id="result"></h3>
-
+<button onclick="genNumber()">New</button>
+<h2 id="num-seq"></h2>
+<div class="answers" id="num-ans"></div>
+<h3 id="num-res"></h3>
 </div>
 
-<!-- ================= VISUAL MODE ================= -->
+<!-- ================= VISUAL ================= -->
 
 <div id="visual" class="hidden">
+<select id="visual-diff">
+  <option value="easy">Easy</option>
+  <option value="medium">Medium</option>
+  <option value="hard">Hard</option>
+</select>
 
-  <div class="grid" id="visual-sequence"></div>
-  <div class="grid" id="visual-answers"></div>
-  <h3 id="visual-result"></h3>
+<div class="grid" id="vis-seq"></div>
+<div class="grid" id="vis-ans"></div>
+<h3 id="vis-res"></h3>
+</div>
 
+<!-- ================= RAVEN ================= -->
+
+<div id="raven" class="hidden">
+<div class="matrix" id="raven-matrix"></div>
+<div class="grid" id="raven-answers"></div>
+<h3 id="raven-res"></h3>
+</div>
+
+<!-- ================= STATS ================= -->
+
+<div id="stats" class="hidden">
+<h2>Stats</h2>
+<p id="stats-text"></p>
 </div>
 
 <script>
-/* ================= TAB CONTROL ================= */
+/* ================= GLOBAL STATS ================= */
 
-function showMode(mode) {
-  document.getElementById("numbers").classList.add("hidden");
-  document.getElementById("visual").classList.add("hidden");
-  document.getElementById(mode).classList.remove("hidden");
+let stats = {
+  total: 0,
+  correct: 0,
+  confidence: { Low:0, Medium:0, High:0 },
+  correctByConfidence: { Low:0, Medium:0, High:0 }
+};
+
+function logResult(conf, correct){
+  stats.total++;
+  stats.confidence[conf]++;
+  if(correct){
+    stats.correct++;
+    stats.correctByConfidence[conf]++;
+  }
 }
 
-/* ================= NUMBER LOGIC ================= */
+/* ================= NAV ================= */
 
-let correctAnswer = null;
-let lastRule = null;
+function show(id){
+  ["numbers","visual","raven","stats"].forEach(x =>
+    document.getElementById(x).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  if(id==="stats") updateStats();
+}
 
-function generateNumberQuestion(ruleOverride = null) {
-  document.getElementById("result").textContent = "";
-  document.getElementById("confidence").value = "";
+/* ================= NUMBERS ================= */
 
-  const difficulty = document.getElementById("difficulty").value;
-  const useBinary = Math.random() < (difficulty === "hard" ? 0.5 : 0.2);
-  const length = Math.floor(Math.random() * 4) + 2;
+let numAnswer, lastRule;
 
-  let sequence = [];
-  let rule = ruleOverride;
+function genNumber(ruleOverride=null){
+  document.getElementById("num-res").textContent="";
+  document.getElementById("confidence").value="";
+  const diff=document.getElementById("difficulty").value;
+  let seq=[], rule=ruleOverride;
+  let len=Math.floor(Math.random()*4)+2;
+  let binary=Math.random()<(diff==="hard"?0.5:0.2);
 
-  if (!rule) {
-    if (useBinary) {
-      const bit = Math.floor(Math.random() * 4);
-      rule = x => x ^ (1 << bit);
-      sequence.push(Math.floor(Math.random() * 16));
-    } else if (difficulty === "easy") {
-      const step = rand(1, 5);
-      rule = x => x + step;
-      sequence.push(rand(1, 20));
-    } else if (difficulty === "medium") {
-      const a = rand(1, 5), b = rand(1, 5);
-      rule = (x, i) => i % 2 === 0 ? x + a : x + b;
-      sequence.push(rand(1, 20));
+  if(!rule){
+    if(binary){
+      let bit=Math.floor(Math.random()*4);
+      rule=x=>x^(1<<bit);
+      seq.push(Math.floor(Math.random()*16));
+    } else if(diff==="easy"){
+      let s=r(1,5); rule=x=>x+s; seq.push(r(1,20));
+    } else if(diff==="medium"){
+      let a=r(1,5),b=r(1,5);
+      rule=(x,i)=>i%2?x+b:x+a;
+      seq.push(r(1,20));
     } else {
-      const m = rand(2, 4), a = rand(1, 5);
-      rule = x => x * m + a;
-      sequence.push(rand(1, 5));
+      let m=r(2,4),a=r(1,5);
+      rule=x=>x*m+a; seq.push(r(1,5));
     }
   }
 
-  lastRule = rule;
+  lastRule=rule;
+  for(let i=1;i<len;i++)
+    seq.push(rule.length===2?rule(seq[i-1],i):rule(seq[i-1]));
 
-  for (let i = 1; i < length; i++) {
-    const prev = sequence[i - 1];
-    sequence.push(rule.length === 2 ? rule(prev, i) : rule(prev));
-  }
-
-  correctAnswer =
-    rule.length === 2
-      ? rule(sequence.at(-1), sequence.length)
-      : rule(sequence.at(-1));
-
-  document.getElementById("sequence").textContent =
-    sequence.map(n => useBinary ? n.toString(2).padStart(4, "0") : n).join(", ") + ", ?";
-
-  generateNumberAnswers(correctAnswer);
+  numAnswer=rule.length===2?rule(seq.at(-1),len):rule(seq.at(-1));
+  document.getElementById("num-seq").textContent=
+    seq.map(x=>binary?x.toString(2).padStart(4,"0"):x).join(", ") + ", ?";
+  genNumAns();
 }
 
-function generateNumberAnswers(correct) {
-  const answersDiv = document.getElementById("answers");
-  answersDiv.innerHTML = "";
-
-  let answers = new Set([correct]);
-  while (answers.size < 4) answers.add(correct + rand(-10, 10));
-
-  [...answers].sort(() => Math.random() - 0.5).forEach(v => {
-    const btn = document.createElement("button");
-    btn.textContent = v;
-    btn.onclick = () => checkNumberAnswer(v);
-    answersDiv.appendChild(btn);
+function genNumAns(){
+  let d=document.getElementById("num-ans"); d.innerHTML="";
+  let set=new Set([numAnswer]);
+  while(set.size<4) set.add(numAnswer+r(-10,10));
+  [...set].sort(()=>Math.random()-0.5).forEach(v=>{
+    let b=document.createElement("button");
+    b.textContent=v;
+    b.onclick=()=>checkNum(v);
+    d.appendChild(b);
   });
 }
 
-function checkNumberAnswer(value) {
-  const confidence = document.getElementById("confidence").value;
-  if (!confidence) return alert("Select confidence first.");
-
-  if (value === correctAnswer) {
-    document.getElementById("result").textContent = "Correct ✅";
-    setTimeout(() => generateNumberQuestion(), 2000);
-  } else {
-    document.getElementById("result").textContent = "Wrong ❌ — retry similar pattern";
-    setTimeout(() => generateNumberQuestion(lastRule), 1500);
-  }
+function checkNum(v){
+  let c=document.getElementById("confidence").value;
+  if(!c) return alert("Select confidence");
+  let correct=v===numAnswer;
+  logResult(c,correct);
+  document.getElementById("num-res").textContent=correct?"Correct ✅":"Wrong ❌";
+  setTimeout(()=>genNumber(correct?null:lastRule),2000);
 }
 
-/* ================= VISUAL LOGIC ================= */
+/* ================= VISUAL ================= */
 
-let visualCorrect = null;
+let visCorrect;
 
-function generateVisual() {
-  document.getElementById("visual-result").textContent = "";
-
-  const colors = ["red", "blue", "green", "yellow"];
-  const ruleType = Math.floor(Math.random() * 3);
+function genVisual(){
+  document.getElementById("vis-res").textContent="";
+  const diff=document.getElementById("visual-diff").value;
+  const colors=["red","blue","green","yellow"];
+  let ruleType=r(0,diff==="easy"?1:diff==="medium"?2:3);
   let rule;
 
-  if (ruleType === 0) {
-    const start = Math.floor(Math.random() * colors.length);
-    rule = i => colors[(start + i) % colors.length];
+  if(ruleType===0){
+    let s=r(0,3); rule=i=>colors[(s+i)%4];
+  }
+  if(ruleType===1){
+    let a=colors[r(0,3)],b;
+    do{b=colors[r(0,3)]}while(b===a);
+    rule=i=>i%2?a:b;
+  }
+  if(ruleType>=2){
+    rule=i=>`rgba(255,255,255,${0.2+i*0.2})`;
   }
 
-  if (ruleType === 1) {
-    const a = colors[rand(0, 3)];
-    let b;
-    do { b = colors[rand(0, 3)]; } while (b === a);
-    rule = i => i % 2 === 0 ? a : b;
+  let seq=document.getElementById("vis-seq"); seq.innerHTML="";
+  for(let i=0;i<4;i++){
+    let b=document.createElement("div");
+    b.className="box"; b.style.background=rule(i);
+    seq.appendChild(b);
   }
+  let q=document.createElement("div");
+  q.className="box"; q.style.background="#333"; seq.appendChild(q);
 
-  if (ruleType === 2) {
-    rule = i => `rgba(255,255,255,${0.2 + i * 0.2})`;
-  }
-
-  const seqDiv = document.getElementById("visual-sequence");
-  seqDiv.innerHTML = "";
-
-  for (let i = 0; i < 4; i++) {
-    const box = document.createElement("div");
-    box.className = "box";
-    box.style.background = rule(i);
-    seqDiv.appendChild(box);
-  }
-
-  const q = document.createElement("div");
-  q.className = "box";
-  q.style.background = "#333";
-  seqDiv.appendChild(q);
-
-  generateVisualAnswers(rule, 4);
-}
-
-function generateVisualAnswers(rule, index) {
-  const answersDiv = document.getElementById("visual-answers");
-  answersDiv.innerHTML = "";
-  visualCorrect = rand(0, 3);
-
-  for (let i = 0; i < 4; i++) {
-    const box = document.createElement("div");
-    box.className = "box";
-    box.style.background = i === visualCorrect ? rule(index) : randomColor();
-    box.onclick = () => checkVisualAnswer(i);
-    answersDiv.appendChild(box);
+  let ans=document.getElementById("vis-ans"); ans.innerHTML="";
+  visCorrect=r(0,3);
+  for(let i=0;i<4;i++){
+    let b=document.createElement("div");
+    b.className="box";
+    b.style.background=i===visCorrect?rule(4):randColor();
+    b.onclick=()=>checkVis(i);
+    ans.appendChild(b);
   }
 }
 
-function checkVisualAnswer(i) {
-  if (i === visualCorrect) {
-    document.getElementById("visual-result").textContent = "Correct ✅";
-    setTimeout(generateVisual, 2000);
-  } else {
-    document.getElementById("visual-result").textContent = "Wrong ❌";
+function checkVis(i){
+  document.getElementById("vis-res").textContent=
+    i===visCorrect?"Correct ✅":"Wrong ❌";
+  setTimeout(genVisual,2000);
+}
+
+/* ================= RAVEN ================= */
+
+let ravenCorrect;
+
+function genRaven(){
+  document.getElementById("raven-res").textContent="";
+  let matrix=document.getElementById("raven-matrix");
+  matrix.innerHTML="";
+  let base=r(1,3);
+  let rule=i=>base+i;
+  for(let i=0;i<8;i++){
+    let b=document.createElement("div");
+    b.className="box";
+    b.style.background=`rgba(255,255,255,${0.1*rule(i)})`;
+    matrix.appendChild(b);
   }
+  let q=document.createElement("div");
+  q.className="box"; q.style.background="#333"; matrix.appendChild(q);
+
+  let ans=document.getElementById("raven-answers");
+  ans.innerHTML="";
+  ravenCorrect=r(0,3);
+  for(let i=0;i<4;i++){
+    let b=document.createElement("div");
+    b.className="box";
+    b.style.background=
+      i===ravenCorrect?`rgba(255,255,255,${0.1*rule(8)})`:randColor();
+    b.onclick=()=>checkRaven(i);
+    ans.appendChild(b);
+  }
+}
+
+function checkRaven(i){
+  document.getElementById("raven-res").textContent=
+    i===ravenCorrect?"Correct ✅":"Wrong ❌";
+  setTimeout(genRaven,2000);
+}
+
+/* ================= STATS ================= */
+
+function updateStats(){
+  let acc=stats.total?((stats.correct/stats.total)*100).toFixed(1):0;
+  document.getElementById("stats-text").innerHTML=
+    `Total: ${stats.total}<br>
+     Accuracy: ${acc}%<br><br>
+     Low: ${stats.correctByConfidence.Low}/${stats.confidence.Low}<br>
+     Medium: ${stats.correctByConfidence.Medium}/${stats.confidence.Medium}<br>
+     High: ${stats.correctByConfidence.High}/${stats.confidence.High}`;
 }
 
 /* ================= HELPERS ================= */
 
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function randomColor() {
-  const r = () => Math.floor(Math.random() * 255);
-  return `rgb(${r()},${r()},${r()})`;
+function r(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function randColor(){
+  let x=()=>Math.floor(Math.random()*255);
+  return `rgb(${x()},${x()},${x()})`;
 }
 
 /* ================= INIT ================= */
 
-generateNumberQuestion();
-generateVisual();
+genNumber();
+genVisual();
+genRaven();
 </script>
 
 </body>
